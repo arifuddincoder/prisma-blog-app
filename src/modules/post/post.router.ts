@@ -4,6 +4,8 @@ import { authenticate, UserRole } from "../../middleware/authenticate";
 
 const router = express.Router();
 
+router.get("/", postController.getAllPosts);
+
 router.post("/", authenticate(UserRole.USER), postController.createPost);
 
 export const postRouter: Router = router;
