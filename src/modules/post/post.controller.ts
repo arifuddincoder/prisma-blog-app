@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import { postService } from "./post.service";
+import { paginationAndSortingHelper } from "../../helpers/paginationAndSortingHelper";
 
 const createPost = async (req: Request, res: Response) => {
 	try {
@@ -32,14 +33,14 @@ const getAllPosts = async (req: Request, res: Response) => {
 
 	const featured = typeof req.query.featured === "string" ? req.query.featured === "true" : undefined;
 
-	const payload: any = {};
+	const q = paginationAndSortingHelper(req); // ✅ pagination + sorting
 
+	const payload: any = { ...q };
 	if (search) payload.search = search;
 	if (tags?.length) payload.tags = tags;
 	if (featured !== undefined) payload.featured = featured;
 
 	const result = await postService.getAllPosts(payload);
-
 	res.status(200).json(result);
 };
 

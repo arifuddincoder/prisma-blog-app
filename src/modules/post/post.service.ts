@@ -1,4 +1,5 @@
 import { Post, Prisma } from "../../../generated/prisma/client";
+import { buildPaginationMeta } from "../../helpers/paginationAndSortingHelper";
 import { prisma } from "../../lib/prisma";
 
 const createPost = async (data: Omit<Post, "id" | "createdAt" | "updatedAt" | "authorId">, userId: string) => {
@@ -12,39 +13,65 @@ const createPost = async (data: Omit<Post, "id" | "createdAt" | "updatedAt" | "a
 	return result;
 };
 
-const getAllPosts = async (payload: { search?: string; tags?: string[]; featured?: boolean }) => {
+type GetAllPostsPayload = {
+	search?: string;
+	tags?: string[];
+	featured?: boolean;
+
+	// ✅ pagination
+	page?: number; // default 1
+	limit?: number; // default 10
+};
+
+const getAllPosts = async (payload: {
+	search?: string;
+	tags?: string[];
+	featured?: boolean;
+
+	// ✅ from helper
+	page: number;
+	limit: number;
+	skip: number;
+	take: number;
+	sortBy: string;
+	sortOrder: "asc" | "desc";
+}) => {
 	const s = payload.search?.trim();
 	const tags = payload.tags?.filter(Boolean);
 	const featured = payload.featured;
 
-	// 🔹 কোনো filter নাই → সব পোস্ট
-	if (!s && (!tags || !tags.length) && featured === undefined) {
-		return prisma.post.findMany();
-	}
+	const where: any = {
+		...(s
+			? {
+					OR: [{ title: { contains: s, mode: "insensitive" } }, { content: { contains: s, mode: "insensitive" } }],
+				}
+			: {}),
+		...(tags && tags.length
+			? {
+					tags: { hasEvery: tags },
+				}
+			: {}),
+		...(featured !== undefined ? { isFeatured: featured } : {}),
+	};
 
-	return prisma.post.findMany({
-		where: {
-			...(s
-				? {
-						OR: [{ title: { contains: s, mode: "insensitive" } }, { content: { contains: s, mode: "insensitive" } }],
-					}
-				: {}),
+	// ✅ safe sort fields (super simple)
+	const allowedSort = ["createdAt", "updatedAt", "views", "title"];
+	const sortBy = allowedSort.includes(payload.sortBy) ? payload.sortBy : "createdAt";
 
-			...(tags && tags.length
-				? {
-						tags: {
-							hasEvery: tags,
-						},
-					}
-				: {}),
+	const [total, data] = await prisma.$transaction([
+		prisma.post.count({ where }),
+		prisma.post.findMany({
+			where,
+			orderBy: { [sortBy]: payload.sortOrder },
+			skip: payload.skip,
+			take: payload.take,
+		}),
+	]);
 
-			...(featured !== undefined
-				? {
-						isFeatured: featured, // ✅ boolean filter
-					}
-				: {}),
-		},
-	});
+	return {
+		meta: buildPaginationMeta(payload.page, payload.limit, total),
+		data,
+	};
 };
 
 export const postService = {
