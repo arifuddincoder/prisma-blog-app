@@ -4,7 +4,7 @@ import "dotenv/config"; // এটা অবশ্যই প্রথম লা�
 import { defineConfig, env } from "prisma/config"; // নোট: Prisma 6.19+ এ "@prisma/config" না, "prisma/config" হতে পারে — চেক করো
 
 export default defineConfig({
-	schema: "prisma/schema.prisma", // তোমার schema পাথ (prisma ফোল্ডারে আছে বলে)
+	schema: "prisma/schema", // তোমার schema পাথ (prisma ফোল্ডারে আছে বলে)
 
 	migrations: {
 		path: "prisma/migrations", // ডিফল্ট ঠিক
